@@ -1,0 +1,48 @@
+version: '3'
+
+services:
+    klarna_solver:
+        image: klarna-solver:latest
+        labels:
+          - "traefik.enable=true"
+          - "traefik.http.routers.backend_reverse_proxy.rule=Host(`127.0.0.1`)"
+          - "traefik.http.routers.backend_reverse_proxy.entrypoints=klarna_solver"
+        expose:
+          - "8000"
+        depends_on:
+            - traefik
+            - redis
+        command: ["gunicorn", "service.server:app", "--bind", "0.0.0.0:8000", "--workers", "1"]
+        networks:
+          - klarna_network
+
+    traefik:
+      image: traefik
+      container_name: klarna_solver_reverse_proxy
+      command:
+        - "--api.insecure=true"
+        - "--entrypoints.traefik.address=:8080"
+        - "--entrypoints.klarna_solver.address=:8000"
+        - "--providers.docker=true"
+        - "--providers.docker.exposedbydefault=false"
+      ports:
+        - "8080:8080"
+        - "8000:8000"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      networks:
+        - klarna_network
+
+    redis:
+      image: redis:3.2
+      container_name: klarna_redis
+      ports:
+        - "6379:6379"
+      entrypoint: redis-server --appendonly yes --protected-mode no
+      sysctls:
+        - net.core.somaxconn=65535
+      networks:
+        - klarna_network
+
+networks:
+    klarna_network:

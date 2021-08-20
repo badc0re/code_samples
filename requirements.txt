@@ -1,0 +1,6 @@
+flask
+redis
+nose
+gunicorn
+flask-restful
+requests
